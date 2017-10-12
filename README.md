@@ -8,3 +8,4 @@ TODO List:
 
 - Integrate GPU fan control
 - Integrate GPU memory clock and voltage control as well for the cores
+- Integrate UI/WebUI
