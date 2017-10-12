@@ -7,6 +7,8 @@ from math import floor
 import logging
 import numpy as np
 import os
+import gpu_control
+import threading
 
 
 
@@ -56,11 +58,39 @@ def query_claymore():
             'fan': int(content[11])
         }
         # print(content)
-    except URLError as e:
+    except Exception as e:
         print('Claymore client not found. Got an error code:{}',format(e))
-        exit(-1)
+        return -1
+        # exit(-1)
 
     return values
+
+def print_values(values):
+    print('--------------------------------')
+    print('Now: {:02}:{:02}. Started at: {:02}:{:02}'.format(now_h, now_m, start_h, start_m))
+    print('Time running: ' + format_time(values['uptime']))
+    print('Mining rate: {} Mh/s'.format(values['rate']))
+    print('Total shares: {}'.format(values['shares']))
+    print('Average shares rate: {:.2f} shares/h'.format(values['shares']/(values['uptime']/60)))
+    print('One hour avg shares: {}'.format(stats_shares_hour.get_sum()))
+    print('Last hour shares: {} (from {:02}h to {:02}h)'.format(one_hour_shares, now_h-1, now_h))
+    print('--------------------------------')
+
+
+def control_fan_speed(gpu):
+    while(True):
+        t = gpu.get_temperature()
+
+        if t > temperature_setpoint:
+            gpu.change_fan_pwm(1)
+        elif t < temperature_setpoint:
+            gpu.change_fan_pwm(-1)
+
+        pwm = gpu.get_fan_pwm()
+
+        print('GPU Temperature: {}C (fan at {}%)'.format(t, pwm))
+
+        sleep(10)
 
 ##########################################################################################
 logger = logging.getLogger()
@@ -73,16 +103,33 @@ handler.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 # add the handlers to the logger
-logger.addHandler(handler)
-
+#logger.addHandler(handler)
 ###########################################################################################
+values = query_claymore();
+
+
 stats_shares_hour = circular_buffer(60) #one sample per min
-shares_previous = query_claymore()['shares'];
+shares_previous = values['shares']
 one_hour_shares = 0
 
+start_h, start_m = localtime()[3:5]
 logger.info('Started...')
 
+
+temperature_setpoint = 72
+gpus = gpu_control.find_gpu_cards()
+
+t_control = threading.Thread(target=control_fan_speed, args=[gpus[0]])
+t_control.start()
+
 while(True):
+    values = query_claymore()
+
+    if values == -1:
+        logger.info('Error connecting to Claymore client')
+        sleep(10)
+        continue
+
     now_h, now_m = localtime()[3:5]
 
     if now_m == 0:
@@ -90,25 +137,19 @@ while(True):
         logger.info('Shares: {}'.format(one_hour_shares))
         #save to logfile here
 
-    values = query_claymore()
+    print_values(values)
 
     # if values['shares'] != shares_previous:
     stats_shares_hour.add(values['shares'] - shares_previous)
     shares_previous = values['shares']
 
 
-    print('--------------------------------')
-    print('Now: {:02}:{:02}'.format(now_h, now_m))
-    print('Time running: ' + format_time(values['uptime']))
-    print('Mining rate: {} Mh/s'.format(values['rate']))
-    print('Total shares: {}'.format(values['shares']))
-    print('Average shares rate: {:.2f} shares/h'.format(values['shares']/(values['uptime']/60)))
-    print('One hour avg shares: {}'.format(stats_shares_hour.get_sum()))
-    print('Last hour shares: {} (from {:02}h to {:02}h)'.format(one_hour_shares, now_h-1, now_h))
-    print('--------------------------------')
-    print('GPU Temperature: {}C (fan at {}%)'.format(values['temperature'], values['fan']))
+
 
     # exit(0)
     sleep(60)
 
 
+
+t_control.join()
+exit()
