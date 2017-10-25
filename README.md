@@ -9,8 +9,9 @@ It allows:
 
 - Controlling fan speed according to the temperature. 
 - Controlling GPU core and memory clock
-- Controlling GPU core and memory voltage 
+
 
 TODO:
 
 - Integrate UI/WebUI
+- Controlling GPU core and memory voltage 
