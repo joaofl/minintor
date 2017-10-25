@@ -147,6 +147,7 @@ update_blynk_th = threading.Thread(target=update_blynk)
 pwm = 0
 t=0
 
+
 while(True):
     claymore_values = query_claymore()
     if claymore_values == -1:
