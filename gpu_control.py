@@ -13,9 +13,9 @@ class gpu_control():
 
         # For controlling the PWM
         self.res = 255  # 8bits
-        self.t_setpoint = 73 #operates at 70 degrees by default
+        self.t_setpoint = 71 #operates at this temp by default
 
-        self.pwm = 180 #set initially at 70%
+        self.pwm = 220 #set initially at 70%
         self.set_fan_pwm(self.pwm)
 
     def set_temperature_setpoint(self, v):
@@ -31,7 +31,7 @@ class gpu_control():
     def control_temperature(self):
         #Simple proportional controller
         t_actual = self.get_temperature()
-        C = 4
+        C = 3.8
         diff = t_actual - self.t_setpoint
 
         if diff == 0:
@@ -53,13 +53,13 @@ class gpu_control():
         file = open(self.control_files_dict['pwm1'], 'w')
         file.write(str(int(self.pwm)))
         file.close()
-        print('Writen {}'.format(self.pwm))
+        #print('Writen {}'.format(self.pwm))
 
     def get_fan_pwm(self):
         file = open(self.control_files_dict['pwm1'], 'r')
         pwm = int(file.read())
         file.close()
-        print('Read {}'.format(pwm))
+        #print('Read {}'.format(pwm))
         return pwm
 
     def get_temperature(self):
@@ -73,13 +73,26 @@ class gpu_control():
             print('Core clock out of range (650-1150 MHz). Not setting anything.')
         else:
             print('Setting GPU{} core frequency to {} MHz.'.format(self.indexv))
-            cmd = './ ohgodatool -i {} --core-state -1 --core-clock {}'.format(self.index, v)
+            cmd = './ohgodatool -i {} --core-state -1 --core-clock {}'.format(self.index, v)
             # run(cmd)
             print(cmd)
 
-
     def get_core_freq(self, v):
         cmd = './ohgodatool -i {} --show-core'.format(self.index)
+        # r = run(cmd)
+        # print(r)
+
+    def set_mem_freq(self, v):
+        if v > 2200 or v < 850:
+            print('Core clock out of range (850-2200 MHz). Not setting anything.')
+        else:
+            print('Setting GPU{} memory frequency to {} MHz.'.format(self.indexv))
+            cmd = './ohgodatool -i {} --mem-state -1 --mem-clock {}'.format(self.index, v)
+            # run(cmd)
+            print(cmd)
+
+    def get_mem_freq(self, v):
+        cmd = './ohgodatool -i {} --show-mem'.format(self.index)
         # r = run(cmd)
         # print(r)
 
